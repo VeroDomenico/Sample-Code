@@ -11,78 +11,79 @@ using UnityEngine.SceneManagement;
 
 public class CardAPI : MonoBehaviour
 {
-
     // The URL of the API endpoint to send the data to
     public string apiUrl;
 
-    //Stucture that needs to be sent to API
-    public class CardRequest{
+    // Structure that needs to be sent to API
+    [Serializable]
+    public class CardRequest
+    {
         public string Id;
     }
-    //Structure that is recieved from API Mimics API Need to Update String and int
-    public class CardResponse{
-        string Id;
-        string CardID;
-        string CardName;
-        string SubType;
-        int Attack;
-        int HP;
-        int Range;
-        int Width;
-        string Ability;
-        int PromotionLevel;
-        int ActionPoints;
+
+    // Structure that is received from API - Mimics API. Need to update string and int types.
+    [Serializable]
+    public class CardResponse
+    {
+        public string Id;
+        public string CardID;
+        public string CardName;
+        public string SubType;
+        public int Attack;
+        public int HP;
+        public int Range;
+        public int Width;
+        public string Ability;
+        public int PromotionLevel;
+        public int ActionPoints;
     }
 
-    //card response
-    CardResponse cardResponse;
+    // Instance of CardResponse to hold API response data
+    private CardResponse cardResponse;
 
-    //Driver for In-Game Testing
-    // Called when the button is clicked
+    // Driver for in-game testing - Called when the button is clicked
     public void OnButtonClick()
     {
-   
         Debug.Log("Button Clicked");
 
         // Start a coroutine to send the data to the API
-        CardRequest cardReq = new CardRequest();
-        cardReq.Id = "Removed";
+        CardRequest cardReq = new CardRequest { Id = "Removed" };
         StartCoroutine(SendDataToAPI(cardReq));
     }
 
-    //Sends data to API
-    public IEnumerator SendDataToAPI(CardRequest data){
-
-        //transform cardrequest Data into JSON
+    // Sends data to API
+    private IEnumerator SendDataToAPI(CardRequest data)
+    {
+        // Transform CardRequest data into JSON
         string jsonData = JsonUtility.ToJson(data);
         Debug.Log(jsonData);
 
         // Constructing Unity API request
-        UnityWebRequest request = new UnityWebRequest(apiUrl, "GET");
-        request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(jsonData));
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
-        
-        //waiting for api response
-        yield return request.SendWebRequest();
+        using (UnityWebRequest request = new UnityWebRequest(apiUrl, "POST"))
+        {
+            request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(jsonData));
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
 
-        if (request.result == UnityWebRequest.Result.Success){
-            string json = request.downloadHandler.text;
-            int jsonStart = json.LastIndexOf("{");
-            int jsonEnd = json.LastIndexOf("}");
-            json = json.Substring(jsonStart, jsonEnd - jsonStart + 1);
-            Debug.Log(json);
-            //place data into a card request class
-            cardResponse = JsonUtility.FromJson<CardResponse>(json);
-        } else {
-            Debug.Log("Error: " + request.error);
+            // Waiting for API response
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string json = request.downloadHandler.text;
+                Debug.Log(json);
+
+                // Parsing JSON response into a CardResponse class instance
+                cardResponse = JsonUtility.FromJson<CardResponse>(json);
+            }
+            else
+            {
+                Debug.LogError("Error: " + request.error);
+            }
+
+            // Dispose handlers to prevent memory leaks
+            request.uploadHandler.Dispose();
+            request.downloadHandler.Dispose();
         }
-        //Need to end the download and upload handlers to prevent memory leaks
-        request.uploadHandler.Dispose();
-        request.downloadHandler.Dispose();
-        yield return null;
     }
 }
-
-    
-
